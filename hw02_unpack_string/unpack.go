@@ -26,16 +26,17 @@ func Unpack(input string) (string, error) {
 			return "", ErrInvalidString
 		}
 
-		if input[fastPtr] >= '1' && input[fastPtr] <= '9' {
+		switch {
+		case input[fastPtr] >= '1' && input[fastPtr] <= '9':
 			builder.WriteString(input[slowPtr : fastPtr-1])
 			builder.WriteString(strings.Repeat(string(input[fastPtr-1]), int(input[fastPtr]-'0')))
 
 			slowPtr = fastPtr + 1
-		} else if input[fastPtr] == '0' {
+		case input[fastPtr] == '0':
 			builder.WriteString(input[slowPtr : fastPtr-1])
 
 			slowPtr = fastPtr + 1
-		} else if input[fastPtr] == '\\' {
+		case input[fastPtr] == '\\':
 			builder.WriteString(input[slowPtr:fastPtr])
 			slowPtr = fastPtr + 1
 			fastPtr++
