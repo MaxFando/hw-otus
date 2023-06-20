@@ -9,44 +9,64 @@ import (
 var ErrInvalidString = errors.New("invalid string")
 
 func Unpack(input string) (string, error) {
-	var builder strings.Builder
-	slowPtr := 0
-	fastPtr := 0
-
 	if len(input) == 0 {
 		return "", nil
 	}
 
-	if unicode.IsDigit(rune(input[0])) {
+	runeSlice := []rune(input)
+
+	if unicode.IsDigit(runeSlice[0]) {
 		return "", ErrInvalidString
 	}
 
-	for fastPtr < len(input) {
-		if input[fastPtr] == '0' && input[slowPtr] == '0' {
-			return "", ErrInvalidString
-		}
+	var builder strings.Builder
+	slowPtrIndex := 0
+	fastPtrIndex := 0
 
+	if runeSlice[fastPtrIndex] == '0' && runeSlice[slowPtrIndex] == '0' {
+		return "", ErrInvalidString
+	}
+
+	for fastPtrIndex < len(runeSlice) {
 		switch {
-		case input[fastPtr] >= '1' && input[fastPtr] <= '9':
-			builder.WriteString(input[slowPtr : fastPtr-1])
-			builder.WriteString(strings.Repeat(string(input[fastPtr-1]), int(input[fastPtr]-'0')))
+		case unicode.IsDigit(runeSlice[fastPtrIndex]) && runeSlice[fastPtrIndex] != '0':
+			for slowPtrIndex < fastPtrIndex-1 {
+				builder.WriteRune(runeSlice[slowPtrIndex])
+				slowPtrIndex++
+			}
 
-			slowPtr = fastPtr + 1
-		case input[fastPtr] == '0':
-			builder.WriteString(input[slowPtr : fastPtr-1])
+			builder.WriteString(strings.Repeat(string(runeSlice[fastPtrIndex-1]), int(runeSlice[fastPtrIndex]-'0')))
 
-			slowPtr = fastPtr + 1
-		case input[fastPtr] == '\\':
-			builder.WriteString(input[slowPtr:fastPtr])
-			slowPtr = fastPtr + 1
-			fastPtr++
+			slowPtrIndex = fastPtrIndex + 1
+		case unicode.IsDigit(runeSlice[fastPtrIndex]) && runeSlice[fastPtrIndex] == '0':
+			if unicode.IsDigit(runeSlice[fastPtrIndex-1]) {
+				return "", ErrInvalidString
+			}
+
+			for slowPtrIndex < fastPtrIndex-1 {
+				builder.WriteRune(runeSlice[slowPtrIndex])
+				slowPtrIndex++
+			}
+
+			slowPtrIndex = fastPtrIndex + 1
+		case runeSlice[fastPtrIndex] == '\\':
+			for slowPtrIndex < fastPtrIndex {
+				builder.WriteRune(runeSlice[slowPtrIndex])
+				slowPtrIndex++
+			}
+
+			slowPtrIndex = fastPtrIndex + 1
+			fastPtrIndex++
 		}
 
-		if fastPtr == len(input)-1 {
-			builder.WriteString(input[slowPtr : fastPtr+1])
+		if fastPtrIndex == len(runeSlice)-1 {
+			for slowPtrIndex < fastPtrIndex+1 {
+				builder.WriteRune(runeSlice[slowPtrIndex])
+				slowPtrIndex++
+			}
 		}
 
-		fastPtr++
+		fastPtrIndex++
 	}
 
 	return builder.String(), nil
