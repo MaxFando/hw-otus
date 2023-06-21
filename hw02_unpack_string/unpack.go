@@ -24,10 +24,6 @@ func Unpack(input string) (string, error) {
 	fastPtrIndex := 0
 	needToBeShielded := false
 
-	if runeSlice[fastPtrIndex] == '0' && runeSlice[slowPtrIndex] == '0' {
-		return "", ErrInvalidString
-	}
-
 	for fastPtrIndex < len(runeSlice) {
 		switch {
 		case unicode.IsDigit(runeSlice[fastPtrIndex]) && runeSlice[fastPtrIndex] != '0':
