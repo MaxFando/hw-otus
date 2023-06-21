@@ -1,4 +1,4 @@
-module github.com/MaxFando/hw02_unpack_string
+module github.com/MaxFando/hw-otus/hw02_unpack_string
 
 go 1.19
 

@@ -22,6 +22,7 @@ func Unpack(input string) (string, error) {
 	var builder strings.Builder
 	slowPtrIndex := 0
 	fastPtrIndex := 0
+	needToBeShielded := false
 
 	if runeSlice[fastPtrIndex] == '0' && runeSlice[slowPtrIndex] == '0' {
 		return "", ErrInvalidString
@@ -30,6 +31,10 @@ func Unpack(input string) (string, error) {
 	for fastPtrIndex < len(runeSlice) {
 		switch {
 		case unicode.IsDigit(runeSlice[fastPtrIndex]) && runeSlice[fastPtrIndex] != '0':
+			if unicode.IsDigit(runeSlice[fastPtrIndex-1]) && !needToBeShielded {
+				return "", ErrInvalidString
+			}
+
 			for slowPtrIndex < fastPtrIndex-1 {
 				builder.WriteRune(runeSlice[slowPtrIndex])
 				slowPtrIndex++
@@ -38,6 +43,7 @@ func Unpack(input string) (string, error) {
 			builder.WriteString(strings.Repeat(string(runeSlice[fastPtrIndex-1]), int(runeSlice[fastPtrIndex]-'0')))
 
 			slowPtrIndex = fastPtrIndex + 1
+			needToBeShielded = false
 		case unicode.IsDigit(runeSlice[fastPtrIndex]) && runeSlice[fastPtrIndex] == '0':
 			if unicode.IsDigit(runeSlice[fastPtrIndex-1]) {
 				return "", ErrInvalidString
@@ -57,6 +63,7 @@ func Unpack(input string) (string, error) {
 
 			slowPtrIndex = fastPtrIndex + 1
 			fastPtrIndex++
+			needToBeShielded = true
 		}
 
 		if fastPtrIndex == len(runeSlice)-1 {
