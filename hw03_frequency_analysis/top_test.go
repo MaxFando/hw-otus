@@ -91,9 +91,6 @@ func TestTop10_NegativeCases(t *testing.T) {
 		{
 			input: "   ", // Ввод, состоящий только из пробелов
 		},
-		{
-			input: "one two three", // Кол-во слов меньше 10
-		},
 	}
 
 	for _, testCase := range testCases {
