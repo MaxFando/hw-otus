@@ -26,7 +26,11 @@ func (h MinHeap) Empty() bool {
 }
 
 func (h MinHeap) Less(i, j int) bool {
-	return h[i].frequency < h[j].frequency
+	if h[i].frequency != h[j].frequency {
+		return h[i].frequency < h[j].frequency
+	}
+
+	return h[i].word > h[j].word
 }
 
 func (h MinHeap) Swap(i, j int) {

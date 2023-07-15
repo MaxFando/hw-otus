@@ -2,7 +2,6 @@ package hw03frequencyanalysis
 
 import (
 	"container/heap"
-	"sort"
 	"strings"
 )
 
@@ -28,23 +27,12 @@ func Top10(input string) []string {
 		}
 	}
 
-	topPairs := make([]Pair, 0)
+	topWords := make([]string, topElements.Len())
+	i := topElements.Len() - 1
 	for !topElements.Empty() {
-		pair := topElements.Top()
-		heap.Pop(topElements)
-		topPairs = append(topPairs, pair)
-	}
-
-	sort.Slice(topPairs, func(i, j int) bool {
-		if topPairs[i].frequency != topPairs[j].frequency {
-			return topPairs[i].frequency > topPairs[j].frequency
-		}
-		return topPairs[i].word < topPairs[j].word
-	})
-
-	topWords := make([]string, 0, len(topPairs))
-	for _, pair := range topPairs {
-		topWords = append(topWords, pair.word)
+		pair := heap.Pop(topElements)
+		topWords[i] = pair.(Pair).word
+		i--
 	}
 
 	return topWords
