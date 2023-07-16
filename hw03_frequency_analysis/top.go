@@ -9,9 +9,6 @@ const countOfTopElements = 10
 
 func Top10(input string) []string {
 	inputSlice := strings.Fields(input)
-	if len(inputSlice) < countOfTopElements {
-		return []string{}
-	}
 
 	wordFrequencyMap := make(map[string]int)
 	for _, word := range inputSlice {
