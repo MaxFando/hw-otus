@@ -17,34 +17,46 @@ func Run(tasks []Task, workersCount, maxErrorsCount int) error {
 	}
 
 	var errorsCount int32
+	errorsCh := make(chan error, maxErrorsCount)
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, workersCount) // Семофор для контроля кол-ва воркеров, работающих одновременно
 
-	for _, task := range tasks {
-		sem <- struct{}{} // Записваем в семофор
+	taskCh := tasksChannelGenerate(tasks)
+	for i := 0; i < workersCount; i++ {
 		wg.Add(1)
-
-		go func(task Task) {
+		go func() {
 			defer wg.Done()
-			defer func() { <-sem }() // Освобождаем семафор
 
-			if err := task(); err != nil {
-				if atomic.LoadInt32(&errorsCount) == int32(maxErrorsCount) {
-					return
+			for task := range taskCh {
+				if err := task(); err != nil {
+					if atomic.LoadInt32(&errorsCount) >= int32(maxErrorsCount) {
+						errorsCh <- ErrErrorsLimitExceeded
+						return
+					}
+
+					atomic.AddInt32(&errorsCount, 1)
 				}
-
-				atomic.AddInt32(&errorsCount, 1)
 			}
-		}(task)
-
-		// Если кол-во ошибок в канале равно максимальному кол-ву ошибок, то перестаем обрабатывать задачи
-		if atomic.LoadInt32(&errorsCount) == int32(maxErrorsCount) {
-			return ErrErrorsLimitExceeded
-		}
+		}()
 	}
 
 	// Ждем завершения всех ворекров
 	wg.Wait()
-
+	close(errorsCh)
+	err := <-errorsCh
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func tasksChannelGenerate(tasks []Task) <-chan Task {
+	tasksCh := make(chan Task, len(tasks))
+
+	for _, task := range tasks {
+		tasksCh <- task
+	}
+
+	close(tasksCh)
+
+	return tasksCh
 }
