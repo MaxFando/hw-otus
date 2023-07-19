@@ -80,3 +80,23 @@ func TestTop10(t *testing.T) {
 		}
 	})
 }
+
+func TestTop10_NegativeCases(t *testing.T) {
+	testCases := []struct {
+		input string
+	}{
+		{
+			input: "", // Пустой ввод
+		},
+		{
+			input: "   ", // Ввод, состоящий только из пробелов
+		},
+	}
+
+	for _, testCase := range testCases {
+		actual := Top10(testCase.input)
+		if len(actual) != 0 {
+			t.Errorf("Input: %s, Expected empty result, Got: %v", testCase.input, actual)
+		}
+	}
+}
