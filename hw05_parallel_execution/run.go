@@ -16,47 +16,49 @@ func Run(tasks []Task, workersCount, maxErrorsCount int) error {
 		return ErrErrorsLimitExceeded
 	}
 
-	var errorsCount int32
-	errorsCh := make(chan error, maxErrorsCount)
+	tasksCh := make(chan Task)
+	var errorsCount int64
 	var wg sync.WaitGroup
 
-	taskCh := tasksChannelGenerate(tasks)
 	for i := 0; i < workersCount; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for task := range taskCh {
-				if err := task(); err != nil {
-					if atomic.LoadInt32(&errorsCount) >= int32(maxErrorsCount) {
-						errorsCh <- ErrErrorsLimitExceeded
-						return
-					}
-
-					atomic.AddInt32(&errorsCount, 1)
-				}
-			}
-		}()
+		go worker(&wg, tasksCh, &errorsCount, maxErrorsCount)
 	}
 
-	// Ждем завершения всех ворекров
+	wg.Add(1)
+	go generator(&wg, tasks, tasksCh, &errorsCount, maxErrorsCount)
+
 	wg.Wait()
-	close(errorsCh)
-	err := <-errorsCh
-	if err != nil {
-		return err
+
+	if errorsCount >= int64(maxErrorsCount) {
+		return ErrErrorsLimitExceeded
 	}
+
 	return nil
 }
 
-func tasksChannelGenerate(tasks []Task) <-chan Task {
-	tasksCh := make(chan Task, len(tasks))
+func worker(wg *sync.WaitGroup, tasksCh chan Task, errorsCount *int64, maxErrorsCount int) {
+	defer wg.Done()
+
+	for task := range tasksCh {
+		if err := task(); err != nil {
+			if atomic.LoadInt64(errorsCount) >= int64(maxErrorsCount) {
+				return
+			}
+
+			atomic.AddInt64(errorsCount, 1)
+		}
+	}
+}
+
+func generator(wg *sync.WaitGroup, tasks []Task, tasksCh chan Task, errorsCount *int64, maxErrorsCount int) {
+	defer wg.Done()
+	defer close(tasksCh)
 
 	for _, task := range tasks {
+		if atomic.LoadInt64(errorsCount) >= int64(maxErrorsCount) {
+			return
+		}
 		tasksCh <- task
 	}
-
-	close(tasksCh)
-
-	return tasksCh
 }
