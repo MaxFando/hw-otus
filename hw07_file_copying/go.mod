@@ -2,11 +2,14 @@ module github.com/MaxFando/hw-otus/hw07_file_copying
 
 go 1.19
 
-require github.com/stretchr/testify v1.8.4
+require (
+	github.com/cheggaaa/pb/v3 v3.1.4
+	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.8.4
+)
 
 require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
-	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

@@ -1,9 +1,8 @@
 package main
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"io"
-	"log"
 	"os"
 
 	"github.com/cheggaaa/pb/v3"
@@ -43,27 +42,32 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		bytesToCopy = limit
 	}
 
-	log.Println("bytesToCopy:", bytesToCopy, "offset:", offset, "limit:", limit)
-
 	_, err = fromFile.Seek(offset, 0)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "can't seek file %s", fromPath)
 	}
 
 	toFile, err := os.Create(toPath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "can't create file %s", toPath)
 	}
 	defer toFile.Close()
 
+	return copyWithProgressBar(bytesToCopy, fromFile, toFile, fromPath, toPath)
+}
+
+func copyWithProgressBar(bytesToCopy int64, fromFile *os.File, toFile *os.File, fromPath, toPath string) error {
 	bar := pb.Start64(bytesToCopy)
 	defer bar.Finish()
 
 	barReader := bar.NewProxyReader(fromFile)
-	_, err = io.CopyN(toFile, barReader, bytesToCopy)
-	if err != nil && errors.Is(err, io.EOF) {
-		_ = os.Remove(toPath)
-		return err
+	_, errCopy := io.CopyN(toFile, barReader, bytesToCopy)
+	if errCopy != nil {
+		errRemove := os.Remove(toPath)
+		if errRemove != nil {
+			return errors.Wrapf(errRemove, "can't remove file %s", toPath)
+		}
+		return errors.Wrapf(errCopy, "can't copy file %s to %s", fromPath, toPath)
 	}
 
 	return nil
