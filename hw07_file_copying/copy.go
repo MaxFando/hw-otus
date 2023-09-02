@@ -2,10 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/cheggaaa/pb/v3"
 	"io"
 	"log"
 	"os"
+
+	"github.com/cheggaaa/pb/v3"
 )
 
 var (
