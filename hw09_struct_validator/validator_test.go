@@ -2,6 +2,7 @@ package hw09structvalidator
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -41,11 +42,102 @@ func TestValidate(t *testing.T) {
 		in          interface{}
 		expectedErr error
 	}{
+		// Тесты для структуры User
 		{
-			// Place your code here.
+			in: User{
+				ID:     "1234567890123456789012345678901234",
+				Name:   "John Doe",
+				Age:    25,
+				Email:  "john@example.com",
+				Role:   "admin",
+				Phones: []string{"12345678901"},
+			},
+			expectedErr: ValidationErrors{
+				{"ID", errors.New("длина поля ID должна быть 36")},
+				{"Phones", errors.New("длина поля Phones должна быть 11")},
+			},
 		},
-		// ...
-		// Place your code here.
+		{
+			in: User{
+				ID:     "1234567890",
+				Name:   "Alice",
+				Age:    17,
+				Email:  "alice.com",
+				Role:   "guest",
+				Phones: []string{"12345"},
+			},
+			expectedErr: ValidationErrors{
+				{"ID", errors.New("длина поля ID должна быть 36")},
+				{"Age", errors.New("Age меньше минимального значения 18")},
+				{"Email", errors.New("Email не удовлетворяет регулярному выражению")},
+				{"Role", errors.New("Role не входит в список разрешенных значений")},
+				{"Phones", errors.New("длина поля Phones должна быть 11")},
+			},
+		},
+
+		// Тесты для структуры App
+		{
+			in: App{
+				Version: "1.0.0",
+			},
+			expectedErr: nil,
+		},
+		{
+			in: App{
+				Version: "12345",
+			},
+			expectedErr: nil,
+		},
+		{
+			in: App{
+				Version: "1.0.00",
+			},
+			expectedErr: ValidationErrors{
+				{"Version", errors.New("длина поля Version должна быть 5")},
+			},
+		},
+
+		// Тесты для структуры Token
+		{
+			in: Token{},
+			expectedErr: ValidationErrors{
+				{"Header", errors.New("неверное поле для правила len: Header")},
+				{"Payload", errors.New("неверное поле для правила len: Payload")},
+				{"Signature", errors.New("неверное поле для правила len: Signature")},
+			},
+		},
+
+		// Тесты для структуры Response
+		{
+			in: Response{
+				Code: 200,
+				Body: "OK",
+			},
+			expectedErr: nil,
+		},
+		{
+			in: Response{
+				Code: 404,
+				Body: "Not Found",
+			},
+			expectedErr: nil,
+		},
+		{
+			in: Response{
+				Code: 500,
+				Body: "",
+			},
+			expectedErr: nil,
+		},
+		{
+			in: Response{
+				Code: 400,
+				Body: "Bad Request",
+			},
+			expectedErr: ValidationErrors{
+				{"Code", errors.New("Code не входит в список разрешенных значений")},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -53,8 +145,16 @@ func TestValidate(t *testing.T) {
 			tt := tt
 			t.Parallel()
 
-			// Place your code here.
-			_ = tt
+			err := Validate(tt.in)
+			if tt.expectedErr == nil {
+				if err != nil {
+					t.Errorf("Ожидается успешная валидация, получена ошибка: %v", err)
+				}
+			} else {
+				if err != nil && err.Error() != tt.expectedErr.Error() {
+					t.Errorf("Ожидается ошибка: %v, получена ошибка: %v", tt.expectedErr, err)
+				}
+			}
 		})
 	}
 }
