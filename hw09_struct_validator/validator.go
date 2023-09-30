@@ -1,3 +1,4 @@
+//nolint:lll
 package hw09structvalidator
 
 import (
@@ -17,7 +18,7 @@ type ValidationError struct {
 type ValidationErrors []ValidationError
 
 func (v ValidationErrors) Error() string {
-	var messages []string
+	messages := make([]string, 0, len(v))
 	for _, ve := range v {
 		messages = append(messages, ve.Err.Error())
 	}
@@ -26,6 +27,8 @@ func (v ValidationErrors) Error() string {
 }
 
 // Validate валидирует структуру v на основе структурных тегов "validate".
+//
+//nolint:gocognit,gocyclo
 func Validate(v interface{}) error {
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Struct {
@@ -63,9 +66,10 @@ func Validate(v interface{}) error {
 			case "len":
 				length, err := strconv.Atoi(ruleValue)
 				if err != nil {
-					return fmt.Errorf("неверное значение правила len для поля %s: %s", fieldName, err)
+					return fmt.Errorf("неверное значение правила len для поля %s: %w", fieldName, err)
 				}
 
+				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.String:
 					fallthrough
@@ -84,7 +88,7 @@ func Validate(v interface{}) error {
 				}
 				match, err := regexp.MatchString(ruleValue, field.String())
 				if err != nil {
-					return fmt.Errorf("ошибка при проверке регулярного выражения для поля %s: %s", fieldName, err)
+					return fmt.Errorf("ошибка при проверке регулярного выражения для поля %s: %w", fieldName, err)
 				}
 				if !match {
 					validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не удовлетворяет регулярному выражению", fieldName)})
