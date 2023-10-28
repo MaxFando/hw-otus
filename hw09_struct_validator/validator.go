@@ -28,7 +28,7 @@ func (v ValidationErrors) Error() string {
 
 // Validate валидирует структуру v на основе структурных тегов "validate".
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo,funlen
 func Validate(v interface{}) error {
 	value := reflect.ValueOf(v)
 	if value.Kind() != reflect.Struct {
@@ -87,6 +87,7 @@ func Validate(v interface{}) error {
 				}
 
 			case "regexp":
+				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.Slice:
 					for j := 0; j < field.Len(); j++ {
@@ -115,6 +116,7 @@ func Validate(v interface{}) error {
 					}
 				}
 			case "in":
+				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.Slice:
 					for j := 0; j < field.Len(); j++ {
@@ -148,6 +150,7 @@ func Validate(v interface{}) error {
 					return fmt.Errorf("неверное значение для правила min: %s", fieldName)
 				}
 
+				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.Int:
 					errMin := validateMin(fieldName, int(field.Int()), minValue)
@@ -171,6 +174,7 @@ func Validate(v interface{}) error {
 					return fmt.Errorf("неверное значение для правила max: %s", fieldName)
 				}
 
+				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.Slice:
 					for j := 0; j < field.Len(); j++ {
@@ -187,7 +191,6 @@ func Validate(v interface{}) error {
 					}
 				default:
 					return fmt.Errorf("неверное поле для правила max: %s", fieldName)
-
 				}
 			}
 		}
