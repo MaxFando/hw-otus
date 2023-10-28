@@ -54,7 +54,6 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErr: ValidationErrors{
 				{"ID", errors.New("длина поля ID должна быть 36")},
-				{"Phones", errors.New("длина поля Phones должна быть 11")},
 			},
 		},
 		{
@@ -71,7 +70,7 @@ func TestValidate(t *testing.T) {
 				{"Age", errors.New("Age меньше минимального значения 18")},
 				{"Email", errors.New("Email не удовлетворяет регулярному выражению")},
 				{"Role", errors.New("Role не входит в список разрешенных значений")},
-				{"Phones", errors.New("длина поля Phones должна быть 11")},
+				{"Phones", errors.New("длина элемента 12345 в списке Phones должна быть 11")},
 			},
 		},
 

@@ -72,60 +72,97 @@ func Validate(v interface{}) error {
 				//nolint:exhaustive
 				switch field.Kind() {
 				case reflect.String:
-					fallthrough
-				case reflect.Slice:
-					fieldLen := field.Len()
-					if fieldLen != length {
+					if field.Len() != length {
 						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("длина поля %s должна быть %d", fieldName, length)})
+					}
+				case reflect.Slice:
+					for j := 0; j < field.Len(); j++ {
+						sliceElem := field.Index(j)
+						if sliceElem.Len() != length {
+							validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("длина элемента %s в списке %s должна быть %d", sliceElem.String(), fieldName, length)})
+						}
 					}
 				default:
 					return fmt.Errorf("неверное поле для правила len: %s", fieldName)
 				}
 
 			case "regexp":
-				if field.Kind() != reflect.String {
-					return fmt.Errorf("неверное поле для правила regexp: %s", fieldName)
-				}
-				match, err := regexp.MatchString(ruleValue, field.String())
-				if err != nil {
-					return fmt.Errorf("ошибка при проверке регулярного выражения для поля %s: %w", fieldName, err)
-				}
-				if !match {
-					validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не удовлетворяет регулярному выражению", fieldName)})
+				switch field.Kind() {
+				case reflect.Slice:
+					for j := 0; j < field.Len(); j++ {
+						sliceElem := field.Index(j)
+						if sliceElem.Kind() != reflect.String {
+							return fmt.Errorf("неверное поле для правила regexp: %s", fieldName)
+						}
+						match, err := regexp.MatchString(ruleValue, field.String())
+						if err != nil {
+							return err
+						}
+						if !match {
+							validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не удовлетворяет регулярному выражению", fieldName)})
+						}
+					}
+				default:
+					if field.Kind() != reflect.String {
+						return fmt.Errorf("неверное поле для правила regexp: %s", fieldName)
+					}
+					match, err := regexp.MatchString(ruleValue, field.String())
+					if err != nil {
+						return fmt.Errorf("ошибка при проверке регулярного выражения для поля %s: %w", fieldName, err)
+					}
+					if !match {
+						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не удовлетворяет регулярному выражению", fieldName)})
+					}
 				}
 			case "in":
-				inValues := strings.Split(ruleValue, ",")
-				valid := false
-				for _, inValue := range inValues {
-					inValue = strings.TrimSpace(inValue)
-					if field.Kind() == reflect.String && field.String() == inValue {
-						valid = true
-						break
-					}
-					if field.Kind() == reflect.Int {
-						intValue, err := strconv.Atoi(inValue)
+				switch field.Kind() {
+				case reflect.Slice:
+					for j := 0; j < field.Len(); j++ {
+						sliceElem := field.Index(j)
+						inValues := strings.Split(ruleValue, ",")
+
+						valid, err := validateIn(sliceElem, fieldName, inValues)
 						if err != nil {
-							return fmt.Errorf("неверное значение для правила in: %s", fieldName)
+							return err
 						}
-						if int(field.Int()) == intValue {
-							valid = true
-							break
+
+						if !valid {
+							validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не входит в список разрешенных значений", fieldName)})
 						}
 					}
+				default:
+					inValues := strings.Split(ruleValue, ",")
+					valid, err := validateIn(field, fieldName, inValues)
+					if err != nil {
+						return err
+					}
+
+					if !valid {
+						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не входит в список разрешенных значений", fieldName)})
+					}
 				}
-				if !valid {
-					validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s не входит в список разрешенных значений", fieldName)})
-				}
+
 			case "min":
 				minValue, err := strconv.Atoi(ruleValue)
 				if err != nil {
 					return fmt.Errorf("неверное значение для правила min: %s", fieldName)
 				}
-				if field.Kind() == reflect.Int {
-					if int(field.Int()) < minValue {
-						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s меньше минимального значения %d", fieldName, minValue)})
+
+				switch field.Kind() {
+				case reflect.Int:
+					errMin := validateMin(fieldName, int(field.Int()), minValue)
+					if errMin != nil {
+						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: errMin})
 					}
-				} else {
+				case reflect.Slice:
+					for j := 0; j < field.Len(); j++ {
+						sliceElem := field.Index(j)
+						errMin := validateMin(fieldName, int(sliceElem.Int()), minValue)
+						if errMin != nil {
+							validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: errMin})
+						}
+					}
+				default:
 					return fmt.Errorf("неверное поле для правила min: %s", fieldName)
 				}
 			case "max":
@@ -133,12 +170,24 @@ func Validate(v interface{}) error {
 				if err != nil {
 					return fmt.Errorf("неверное значение для правила max: %s", fieldName)
 				}
-				if field.Kind() == reflect.Int {
-					if int(field.Int()) > maxValue {
-						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: fmt.Errorf("%s больше максимального значения %d", fieldName, maxValue)})
+
+				switch field.Kind() {
+				case reflect.Slice:
+					for j := 0; j < field.Len(); j++ {
+						sliceElem := field.Index(j)
+						errMax := validateMax(fieldName, int(sliceElem.Int()), maxValue)
+						if errMax != nil {
+							validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: errMax})
+						}
 					}
-				} else {
+				case reflect.Int:
+					errMax := validateMax(fieldName, int(field.Int()), maxValue)
+					if errMax != nil {
+						validationErrors = append(validationErrors, ValidationError{Field: fieldName, Err: errMax})
+					}
+				default:
 					return fmt.Errorf("неверное поле для правила max: %s", fieldName)
+
 				}
 			}
 		}
@@ -149,4 +198,42 @@ func Validate(v interface{}) error {
 	}
 
 	return nil
+}
+
+func validateMax(fieldName string, v, maxValue int) error {
+	if v > maxValue {
+		return fmt.Errorf("%s больше максимального значения %d", fieldName, maxValue)
+	}
+	return nil
+}
+
+func validateMin(fieldName string, v, minValue int) error {
+	if v < minValue {
+		return fmt.Errorf("%s меньше минимального значения %d", fieldName, minValue)
+	}
+	return nil
+}
+
+func validateIn(field reflect.Value, fieldName string, inValues []string) (bool, error) {
+	valid := false
+
+	for _, inValue := range inValues {
+		inValue = strings.TrimSpace(inValue)
+		if field.Kind() == reflect.String && field.String() == inValue {
+			valid = true
+			break
+		}
+		if field.Kind() == reflect.Int {
+			intValue, err := strconv.Atoi(inValue)
+			if err != nil {
+				return false, fmt.Errorf("неверное значение для правила in: %s", fieldName)
+			}
+			if int(field.Int()) == intValue {
+				valid = true
+				break
+			}
+		}
+	}
+
+	return valid, nil
 }
